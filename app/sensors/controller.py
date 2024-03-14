@@ -77,7 +77,7 @@ def delete_sensor(sensor_id: int, db: Session = Depends(get_db), mongodb_client:
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
 
-    db_data = repository.get_data(redis=redis_client, sensor_id=sensor_id)
+    db_data = repository.get_data(redis=redis_client, db_sensor=db_sensor)
     if db_data is None:
         raise HTTPException(status_code=404, detail="Sensor has no data")
 
@@ -98,14 +98,4 @@ def get_data(sensor_id: int, db: Session = Depends(get_db) ,redis_client: RedisC
     db_sensor = repository.get_sensor(db, sensor_id)
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
-    #Get the data without name and id
-    db_sensor_data = repository.get_data(redis_client, sensor_id)
-
-    #Create the dictionary for return with id or name if exists
-    db_data = {
-        'id': db_sensor.id,
-        'name': db_sensor.name
-    }
-    #We add the information of get_Data at id and name
-    db_data.update(db_sensor_data)
-    return db_data
+    return repository.get_data(redis_client, db_sensor)

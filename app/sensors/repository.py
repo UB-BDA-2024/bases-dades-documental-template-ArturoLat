@@ -34,13 +34,21 @@ def record_data(redis: RedisClient, sensor_id: int, data: schemas.SensorData) ->
     redis.set(sensor_id, json.dumps(data.dict()))
     return db_sensordata
 
-def get_data(redis: RedisClient, sensor_id: int) -> schemas.SensorData:
-    db_data = redis.get(sensor_id)
+def get_data(redis: RedisClient, db_sensor: models.Sensor):
+    db_data = redis.get(db_sensor.id)
 
     if db_data is None:
         raise HTTPException(status_code=404, detail="Sensor data not found")
+    json_data = json.loads(db_data)
+    # Create the dictionary for return with id or name if exists
+    db_data = {
+        'id': db_sensor.id,
+        'name': db_sensor.name
+    }
+    # We add the information of get_Data at id and name
+    db_data.update(json_data)
+    return db_data
 
-    return json.loads(db_data)
 
 def delete_sensor(db: Session, sensor_id: int, mongodb: MongoDBClient, redis: RedisClient):
     db_sensor = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
@@ -60,16 +68,8 @@ def get_sensors_near(mongodb: MongoDBClient, latitude: float, longitude: float, 
     sensors = mongodb.collection.find(query)
     for sensor in sensors:
         db_sensor = get_sensor_by_name(db, sensor['name'])
-        db_sensor_data = get_data(redis, db_sensor.id)
-
-        # We make the same that we do it in get_data
-        db_data = {
-            'id': db_sensor.id,
-            'name': db_sensor.name
-        }
-        db_data.update(db_sensor_data)
-
-        list_near.append(db_data)
+        db_sensor_data = get_data(redis, db_sensor)
+        list_near.append(db_sensor_data)
 
     return list_near
 
